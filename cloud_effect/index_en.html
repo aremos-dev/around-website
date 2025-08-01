@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Video to Point Matrix - Fixed Background</title>
+    <style>
+        @font-face {
+            font-family: 'OPPO Sans 4.0';
+            src: url('path-to-your-font/OPPO-Sans-4.0-SemiBold.woff2') format('woff2');
+            font-weight: 600;
+            font-style: normal;
+        }
+        
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'OPPO Sans 4.0', Arial, sans-serif;
+            background: #FFF;
+            overflow-x: hidden;
+        }
+
+        /* Fixed background effect container - always centered */
+        .fixed-effect-background {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100vw;
+            height: 100vh;
+            z-index: -2; /* Behind everything */
+            overflow: hidden;
+        }
+
+        .fixed-effect-background canvas {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .fixed-effect-background video {
+            display: none;
+        }
+
+        /* Fixed blur overlay - always centered (bkg/Rectangle_3) */
+        .fixed-blur-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100vw;
+            height: 100vh;
+            background-image: url('bkg/Rectangle_3.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 1;
+            z-index: -1; /* Above effect but behind content */
+            pointer-events: none;
+        }
+
+        /* Content container - defines scroll height but doesn't move content */
+        .content-container {
+            position: relative;
+            z-index: 1;
+            height: 400vh; /* Increased scroll height for smoother transitions */
+        }
+
+        /* Fixed page sections - content stays in place, only opacity changes */
+        .page-section {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 80px 40px;
+            box-sizing: border-box;
+            transition: all 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smoother, longer transition */
+            z-index: 1;
+        }
+
+        /* Hero page styles */
+        .hero-section {
+            text-align: center;
+        }
+
+        .hero-section h1 {
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 600;
+            font-style: normal;
+            font-size: 80px;
+            line-height: 86px;
+            letter-spacing: -4%;
+            color: #251F23;
+            margin: 0 0 20px 0;
+        }
+
+        /* Ensure four-character phrases stay together */
+        .phrase-group {
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+        .hero-section .english-subtitle {
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 600;
+            font-style: normal;
+            font-size: 91px;
+            line-height: 86px;
+            letter-spacing: -4%;
+            color: #251F23;
+            margin: 0;
+        }
+
+        /* About page styles */
+        .about-section {
+            text-align: center;
+        }
+
+        .about-title {
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 600;
+            font-style: normal;
+            font-size: 36px;
+            line-height: 125%;
+            letter-spacing: 0%;
+            color: #251F23;
+            margin: 0 0 40px 0;
+        }
+
+        .about-description {
+            max-width: 1000px;
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 133%;
+            letter-spacing: 0%;
+            text-align: center;
+            color: #251F23;
+            margin: 0;
+        }
+
+        /* Manifesto page styles - COMPLETELY CENTERED */
+        .manifesto-section {
+            text-align: center;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Fixed blur overlay for manifesto (bkg/Rectangle_2) */
+        .manifesto-blur-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('bkg/Rectangle_2.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            z-index: -1; /* Behind manifesto content but above fixed background */
+            pointer-events: none;
+            transition: opacity 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smoother transition */
+        }
+
+        .manifesto-title {
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 600;
+            font-style: normal;
+            font-size: 36px;
+            line-height: 125%;
+            letter-spacing: 0%;
+            color: #251F23;
+            margin: 0 0 60px 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .manifesto-content {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 40px;
+            position: relative;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            z-index: 1;
+        }
+
+        .manifesto-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: calc(66.67% + 20px);
+            height: 1px;
+            background-color: #251F23;
+        }
+
+        .manifesto-content::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: calc(33.33% + 20px);
+            right: 0;
+            height: 1px;
+            background-color: #251F23;
+        }
+
+        .manifesto-text {
+            flex: 1;
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            font-size: 20px;
+            line-height: 119%;
+            letter-spacing: 0%;
+            color: #251F23;
+            padding-top: 40px;
+            text-align: left;
+            max-width: 400px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .manifesto-text:last-child {
+            letter-spacing: -1%;
+        }
+
+        /* Brand page styles */
+        .brand-section {
+            text-align: center;
+        }
+
+        .brand-title {
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 600;
+            font-style: normal;
+            font-size: 36px;
+            line-height: 125%;
+            letter-spacing: 0%;
+            color: #251F23;
+            margin: 0 0 60px 0;
+        }
+
+        .brand-chinese {
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 500;
+            font-style: normal;
+            font-size: 80px;
+            line-height: 86px;
+            letter-spacing: -4%;
+            color: #251F23;
+            margin: 0 0 20px 0;
+        }
+
+        .brand-english {
+            font-family: 'OPPO Sans 4.0', sans-serif;
+            font-weight: 300;
+            font-style: normal;
+            font-size: 36px;
+            line-height: 86px;
+            letter-spacing: -4%;
+            color: #251F23;
+            margin: 0;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .manifesto-content {
+                flex-direction: column;
+                gap: 30px;
+                align-items: center;
+            }
+            
+            .manifesto-content::before,
+            .manifesto-content::after {
+                display: none;
+            }
+            
+            .manifesto-text {
+                padding-top: 20px;
+                text-align: center;
+                max-width: 600px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero-section h1 {
+                font-size: 60px;
+                line-height: 66px;
+            }
+            
+            .hero-section .english-subtitle {
+                font-size: 50px;
+                line-height: 66px;
+            }
+            
+            .brand-chinese {
+                font-size: 60px;
+                line-height: 66px;
+            }
+            
+            .about-description {
+                font-size: 20px;
+                padding: 0 20px;
+            }
+            
+            .manifesto-text {
+                font-size: 18px;
+            }
+            
+            .page-section {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fixed background effect - always centered -->
+    <div class="fixed-effect-background">
+        <video id="video" autoplay loop muted>
+            <source src="slow-real-cloud.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Fixed blur overlay - always centered (bkg/Rectangle_3) -->
+    <div class="fixed-blur-overlay"></div>
+
+    <!-- Manifesto blur overlay - controlled separately -->
+    <div class="manifesto-blur-overlay" id="manifestoBlur"></div>
+
+    <!-- Content container defines scroll height -->
+    <div class="content-container">
+        <!-- Page 1: Hero - Fixed position -->
+        <section class="page-section hero-section" id="home">
+            <p class="english-subtitle">SOFT TECH &nbsp HUMAN PACE</p>
+        </section>
+
+        <!-- Page 2: About - Fixed position -->
+        <section class="page-section about-section" id="about">
+            <h2 class="about-title">About us</h2>
+            <p class="about-description">We are a soft technology brand that supports the natural rhythms of daily life and emotional well-being through gentle, thoughtful, and trustworthy design.</p>
+        </section>
+
+        <!-- Page 3: Manifesto - Fixed position -->
+        <section class="page-section manifesto-section" id="manifesto">
+            <h2 class="manifesto-title">Manifesto</h2>
+            <div class="manifesto-content">
+                <div class="manifesto-text">
+                    We live in an age of urgency.<br>
+                    Tech is louder, faster, everywhere at once.<br>
+                    But we chose another path.<br><br>
+                    
+                    Ours is a quieter presence —<br>
+                    not to demand attention,<br>
+                    but to make space for what matters.<br>
+                    Not to impress, but to resonate.<br><br>
+                    
+                    We believe technology can slow down,<br>
+                    breathe, listen,<br>
+                    and move at the tempo of real life.<br><br>
+                    
+                    We don't build for constant input.<br>
+                    We build for emotional clarity.<br>
+                    For calm.<br>
+                    For those quiet moments that help us feel more like ourselves.<br><br>
+                    
+                    Innovation isn't about disruption.<br>
+                    It's about harmony,<br>
+                    with your ease, your strength, your overwhelm.<br><br>
+                    
+                    We design for people who need room to feel,<br>
+                    not just things to do.<br>
+                    For lives that need a little more softness,<br>
+                    and a pace that truly feels like their own.
+                </div>
+                <div class="manifesto-text">
+                    <!-- Second column for visual balance, can be empty or contain additional content -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        console.log('Script started');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        let ctx;
+        let playbackSpeed = 0.4;
+
+        try {
+            ctx = canvas.getContext('2d', { antialias: true });
+            console.log('Canvas context initialized:', ctx);
+        } catch (e) {
+            console.error('Canvas context failed:', e);
+        }
+
+        if (!video) console.error('Video element not found');
+        if (!canvas) console.error('Canvas element not found');
+        if (!ctx) console.error('Canvas context not available');
+
+        // Set canvas size to viewport
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            console.log('Canvas resized to:', canvas.width, canvas.height);
+            if (pointMatrix.length > 0) {
+                initPointMatrix(); // Reinitialize points on resize
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        video.addEventListener('loadedmetadata', () => {
+            console.log('Video metadata:', video.videoWidth, video.videoHeight);
+            resizeCanvas();
+            video.playbackRate = playbackSpeed;
+            initPointMatrix();
+        });
+
+        let pointMatrix = [];
+
+        function initPointMatrix() {
+            if (canvas.width === 0 || canvas.height === 0) {
+                console.error('Cannot initialize matrix: invalid canvas size');
+                return;
+            }
+            const centerX = canvas.width / 2;
+            const centerY = 450 + (canvas.height * 0.1); // Start closer to panel, 10% of height offset
+            const maxRadius = canvas.height * 1.3; // Maximize radius to cover full height
+
+            pointMatrix = [];
+            const numRings = 70; // Keep original ring count
+            for (let i = 0; i < numRings; i++) {
+                const r = (i / (numRings - 1)) * maxRadius; // Linear radius increase to fill space
+                const pointsPerRing = Math.max(1, Math.round(1 + 6 * i)); // Maintain density
+                const angleStep = 2 * Math.PI / pointsPerRing;
+
+                let row = [];
+                for (let j = 0; j < pointsPerRing; j++) {
+                    const theta = j * angleStep;
+                    const x = centerX + r * Math.cos(theta);
+                    const y = centerY + r * Math.sin(theta); // Points can extend beyond screen
+                    // Don't filter out points - let them extend beyond screen bounds
+                    row.push({ x, y, size: 3 }); // Initial size
+                }
+                if (row.length > 0) pointMatrix.push(row);
+            }
+            console.log('Point matrix initialized:', pointMatrix.length, 'rings', pointMatrix[pointMatrix.length - 1]?.length, 'points in outermost ring (approx)');
+        }
+
+        function draw() {
+            if (!ctx || canvas.width === 0 || canvas.height === 0) {
+                console.error('Invalid drawing context or dimensions:', ctx, canvas.width, canvas.height);
+                requestAnimationFrame(draw);
+                return;
+            }
+            
+            try {
+                const offscreenCanvas = document.createElement('canvas');
+                offscreenCanvas.width = canvas.width;
+                offscreenCanvas.height = canvas.height;
+                const offscreenCtx = offscreenCanvas.getContext('2d');
+                if (!offscreenCtx) {
+                    console.error('Offscreen canvas context failed');
+                    requestAnimationFrame(draw);
+                    return;
+                }
+                
+                offscreenCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = offscreenCtx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const smoothingFactor = 0.1;
+                const cloudThreshold = 1.61;
+                
+                pointMatrix.forEach((ring) => {
+                    ring.forEach(point => {
+                        const pixelX = Math.round(point.x);
+                        const pixelY = Math.round(point.y);
+                        // Only check bounds for pixel sampling, not for drawing
+                        if (pixelX >= 0 && pixelX < canvas.width && pixelY >= 0 && pixelY < canvas.height) {
+                            const pixelIndex = (pixelY * canvas.width + pixelX) * 4;
+                            const r = data[pixelIndex];
+                            const g = data[pixelIndex + 1];
+                            const b = data[pixelIndex + 2];
+                            const cloudScore = (r + g) / (b + 1);
+
+                            const maxsize = 6;
+                            const minsize = 2;
+                            const targetSize = cloudScore > cloudThreshold ? minsize : maxsize;
+                            
+                            if (cloudScore > cloudThreshold) {
+                                point.size = Math.max(minsize, point.size - (maxsize - minsize) * smoothingFactor);
+                            } else {
+                                point.size += (targetSize - point.size) * smoothingFactor;
+                            }
+                            point.size = Math.min(maxsize, Math.max(minsize, point.size));
+                        }
+
+                        // Always draw the point, even if it's outside screen bounds
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, point.size, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgb(135, 206, 250)';
+                        ctx.fill();
+                    });
+                });
+            } catch (e) {
+                console.error('Draw error:', e);
+            }
+            requestAnimationFrame(draw);
+        }
+
+        video.addEventListener('play', () => {
+            console.log('Video play event triggered');
+            if (!pointMatrix.length) initPointMatrix();
+            draw();
+        });
+
+        video.addEventListener('canplay', () => {
+            console.log('Video can play');
+        });
+
+        video.addEventListener('error', (e) => {
+            console.error('Video error:', e);
+        });
+
+        console.log('Attempting to play video');
+        video.play().then(() => {
+            console.log('Video playback started');
+        }).catch((err) => {
+            console.error('Failed to play video:', err);
+        });
+
+        // Initialize canvas size immediately
+        resizeCanvas();
+
+        // Track scroll direction
+        let lastScrollTop = 0;
+        let scrollDirection = 1; // 1 for down, -1 for up
+
+        // Smooth easing function for more natural transitions
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        // Fixed position fade effect with 90% fade ranges and anti-overlap movement
+        function handleFixedPositionFade() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const viewportHeight = window.innerHeight;
+            const totalHeight = document.querySelector('.content-container').offsetHeight;
+            
+            // Update scroll direction
+            if (scrollTop > lastScrollTop) {
+                scrollDirection = 1; // scrolling down
+            } else if (scrollTop < lastScrollTop) {
+                scrollDirection = -1; // scrolling up
+            }
+            lastScrollTop = scrollTop;
+            
+            // Calculate which "page" we're on based on scroll position
+            const scrollProgress = scrollTop / (totalHeight - viewportHeight);
+            const currentPage = scrollProgress * 3; // 0-3 range for 3 pages with more space
+            
+            const heroSection = document.getElementById('home');
+            const aboutSection = document.getElementById('about');
+            const manifestoSection = document.getElementById('manifesto');
+            const manifestoBlur = document.getElementById('manifestoBlur');
+            
+            // Hero section (page 0) - 90% fade range
+            if (currentPage <= 1.0) {
+                let opacity = 1;
+                
+                if (currentPage <= 0.1) {
+                    // Fully visible until 10% of first section
+                    opacity = 1;
+                    heroSection.style.transform = 'translateY(0px)';
+                } else {
+                    // Fade out from 0.1 to 1.0 (90% fade range)
+                    const fadeProgress = (currentPage - 0.1) / 0.9;
+                    opacity = 1 - easeInOutCubic(fadeProgress);
+                    
+                    // When fading out, move against scroll direction (up when scrolling down)
+                    const translateY = -260 * fadeProgress;
+                    heroSection.style.transform = `translateY(${translateY}px)`;
+                }
+                
+                heroSection.style.opacity = opacity;
+            } else {
+                heroSection.style.opacity = 0;
+                heroSection.style.transform = 'translateY(-260px)';
+            }
+            
+            // About section (page 1) - 90% fade range
+            if (currentPage >= 0.1 && currentPage <= 2.0) {
+                let opacity = 0;
+                let translateY = 0;
+                
+                if (currentPage <= 1.0) {
+                    // Fade in from 0.1 to 1.0 (90% fade in)
+                    const fadeProgress = (currentPage - 0.1) / 0.9;
+                    opacity = easeInOutCubic(fadeProgress);
+                    
+                    // When fading in, start from below and move up (against previous scroll direction)
+                    translateY = 260 * (1 - fadeProgress);
+                } else if (currentPage <= 1.1) {
+                    // Fully visible from 1.0 to 1.1 (10% fully visible)
+                    opacity = 1;
+                    translateY = 0;
+                } else {
+                    // Fade out from 1.1 to 2.0 (90% fade out)
+                    const fadeProgress = (currentPage - 1.1) / 0.9;
+                    opacity = 1 - easeInOutCubic(fadeProgress);
+                    
+                    // When fading out, move against scroll direction (up when scrolling down)
+                    translateY = -260 * fadeProgress;
+                }
+                
+                aboutSection.style.opacity = opacity;
+                aboutSection.style.transform = `translateY(${translateY}px)`;
+            } else {
+                aboutSection.style.opacity = 0;
+                if (currentPage < 0.1) {
+                    aboutSection.style.transform = 'translateY(260px)';
+                } else {
+                    aboutSection.style.transform = 'translateY(-260px)';
+                }
+            }
+            
+            // Manifesto section (page 2) - 90% fade range
+            if (currentPage >= 1.1) {
+                // Fade in from 1.1 to 2.0 (90% fade range)
+                const fadeProgress = Math.min(1, (currentPage - 1.1) / 0.9);
+                const opacity = easeInOutCubic(fadeProgress);
+                
+                // When fading in, start from below and move up (against previous scroll direction)
+                const translateY = 260 * (1 - fadeProgress);
+                
+                manifestoSection.style.opacity = opacity;
+                manifestoBlur.style.opacity = opacity;
+                manifestoSection.style.transform = `translateX(-50%) translateY(${translateY}px)`;
+            } else {
+                manifestoSection.style.opacity = 0;
+                manifestoBlur.style.opacity = 0;
+                manifestoSection.style.transform = 'translateX(-50%) translateY(260px)';
+            }
+        }
+        
+        // Throttled scroll handler for better performance
+        let scrollTimeout;
+        function throttledScrollHandler() {
+            if (scrollTimeout) {
+                cancelAnimationFrame(scrollTimeout);
+            }
+            scrollTimeout = requestAnimationFrame(handleFixedPositionFade);
+        }
+        
+        // Add scroll event listener
+        window.addEventListener('scroll', throttledScrollHandler, { passive: true });
+        
+        // Initial fade calculation
+        handleFixedPositionFade();
+
+        // Fallback to start drawing after delay
+        setTimeout(() => {
+            console.log('Checking video state after 1s:', video.paused, video.readyState);
+            if (!video.paused && video.readyState >= 2) {
+                console.log('Starting draw from timeout');
+                if (!pointMatrix.length) initPointMatrix();
+                draw();
+            } else {
+                console.log('Video not ready, retrying play');
+                video.play().catch((err) => console.error('Retry failed:', err));
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
